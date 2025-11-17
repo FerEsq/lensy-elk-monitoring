@@ -1,0 +1,100 @@
+heartbeat.monitors:
+  # Monitor HTTP para el endpoint de health
+  - type: http
+    id: lensy-api-health
+    name: "Lensy API Health Check"
+    schedule: '@every 30s'
+    urls: 
+      - "http://lensy-api:5000/api/health"
+    
+    # Configuración de checks
+    check.request:
+      method: GET
+    
+    check.response:
+      status: [200]
+      body:
+        - '"status":"healthy"'
+    
+    # Timeout
+    timeout: 10s
+    
+    # Campos adicionales
+    fields:
+      service: lensy-api
+      environment: production
+    fields_under_root: true
+
+  # Monitor HTTP para endpoint de profesionales
+  - type: http
+    id: lensy-api-professionals
+    name: "Lensy API Professionals Endpoint"
+    schedule: '@every 1m'
+    urls:
+      - "http://lensy-api:5000/api/professionals"
+    
+    check.request:
+      method: GET
+    
+    check.response:
+      status: [200]
+    
+    timeout: 10s
+    
+    fields:
+      service: lensy-api
+      environment: production
+      endpoint: professionals
+    fields_under_root: true
+
+  # Monitor HTTP para endpoint de búsqueda
+  - type: http
+    id: lensy-api-search
+    name: "Lensy API Search Endpoint"
+    schedule: '@every 1m'
+    urls:
+      - "http://lensy-api:5000/api/search"
+    
+    check.request:
+      method: GET
+    
+    check.response:
+      status: [200]
+    
+    timeout: 10s
+    
+    fields:
+      service: lensy-api
+      environment: production
+      endpoint: search
+    fields_under_root: true
+
+# Procesadores
+processors:
+  - add_observer_metadata:
+      geo:
+        name: Guatemala City
+        location: "14.6349, -90.5069"
+
+# Output hacia Elasticsearch
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "lensy-heartbeat-%{+yyyy.MM.dd}"
+
+# Configuración de template
+setup.template.name: "lensy-heartbeat"
+setup.template.pattern: "lensy-heartbeat-*"
+setup.ilm.enabled: false
+
+# Configuración de Kibana
+setup.kibana:
+  host: "http://kibana:5601"
+
+# Logging
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/heartbeat
+  name: heartbeat
+  keepfiles: 7
+  permissions: 0644

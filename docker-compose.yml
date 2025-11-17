@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Elasticsearch - Motor de búsqueda y almacenamiento
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: lensy-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - elk
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kibana - Interfaz de visualización
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: lensy-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Filebeat - Recolector de logs
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: lensy-filebeat
+    user: root
+    command: filebeat -e -strict.perms=false
+    volumes:
+      - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs/lensy-api.log:/var/log/lensy-api.log:ro
+      - filebeat-data:/usr/share/filebeat/data
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk
+
+  # Heartbeat - Monitor de disponibilidad
+  heartbeat:
+    image: docker.elastic.co/beats/heartbeat:8.11.0
+    container_name: lensy-heartbeat
+    user: root
+    command: heartbeat -e -strict.perms=false
+    volumes:
+      - ./config/heartbeat.yml:/usr/share/heartbeat/heartbeat.yml:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk
+
+  # API de Lensy
+  lensy-api:
+    build: ./api
+    container_name: lensy-api
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logs/lensy-api.log:/app/lensy-api.log
+    networks:
+      - elk
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  elasticsearch-data:
+    driver: local
+  filebeat-data:
+    driver: local
+
+networks:
+  elk:
+    driver: bridge

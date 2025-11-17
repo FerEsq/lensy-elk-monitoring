@@ -1,0 +1,56 @@
+filebeat.inputs:
+  # Configuración para leer los logs de Lensy API
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/lensy-api.log
+    
+    # Parsear JSON directamente
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: message
+    
+    # Campos adicionales
+    fields:
+      app: lensy
+      environment: production
+    fields_under_root: true
+
+# Configuración de procesamiento
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  
+  # Decodificar JSON si es necesario
+  - decode_json_fields:
+      fields: ["message"]
+      target: ""
+      overwrite_keys: true
+      when:
+        regexp:
+          message: "^{.*}$"
+
+# Output hacia Elasticsearch
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "lensy-api-logs-%{+yyyy.MM.dd}"
+  
+# Configuración de template
+setup.template.name: "lensy-api"
+setup.template.pattern: "lensy-api-*"
+setup.ilm.enabled: false
+
+# Configuración de Kibana (para dashboards)
+setup.kibana:
+  host: "http://kibana:5601"
+
+# Configuración de logging de Filebeat
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
