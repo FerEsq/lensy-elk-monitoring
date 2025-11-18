@@ -21,7 +21,7 @@ heartbeat.monitors:
     
     # Campos adicionales
     fields:
-      service: lensy-api
+      service_name: lensy-api
       environment: production
     fields_under_root: true
 
@@ -42,7 +42,7 @@ heartbeat.monitors:
     timeout: 10s
     
     fields:
-      service: lensy-api
+      service_name: lensy-api
       environment: production
       endpoint: professionals
     fields_under_root: true
@@ -64,7 +64,7 @@ heartbeat.monitors:
     timeout: 10s
     
     fields:
-      service: lensy-api
+      service_name: lensy-api
       environment: production
       endpoint: search
     fields_under_root: true
