@@ -43,6 +43,29 @@ services:
       timeout: 10s
       retries: 5
 
+  # Kibana Setup - Importa dashboard automáticamente
+  kibana-setup:
+    image: curlimages/curl:latest
+    container_name: lensy-kibana-setup
+    depends_on:
+      kibana:
+        condition: service_healthy
+    volumes:
+      - ./config/kibana-dashboard.ndjson:/dashboard.ndjson:ro
+    command: >
+      sh -c "
+        echo 'Esperando 10 segundos adicionales para Kibana...' &&
+        sleep 10 &&
+        echo 'Importando dashboard de Lensy...' &&
+        curl -X POST 'http://kibana:5601/api/saved_objects/_import?overwrite=true' \
+          -H 'kbn-xsrf: true' \
+          --form file=@/dashboard.ndjson &&
+        echo '' &&
+        echo 'Dashboard importado exitosamente!'
+      "
+    networks:
+      - elk
+
   # Filebeat - Recolector de logs
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.11.0
